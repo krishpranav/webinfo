@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/fatih/color"
@@ -411,4 +412,18 @@ func cleanProtocol(target string) string {
 		return target[:len(target)-1]
 	}
 	return target
+}
+
+func outputFormatIsOk(input string) bool {
+	if input == "" {
+		return true
+	}
+	acceptedOutput := [2]string{"txt", "html"}
+	input = strings.ToLower(input)
+	for _, output := range acceptedOutput {
+		if output == input {
+			return true
+		}
+	}
+	return false
 }
