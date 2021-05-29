@@ -857,4 +857,20 @@ func ignoreClassOk(input string) bool {
 	return false
 }
 
-
+func checkPortsArray(input string) []int {
+	delimiter := byte(',')
+	sliceOfPorts := strings.Split(input, string(delimiter))
+	sliceOfPorts = removeDuplicateValues(sliceOfPorts)
+	result := []int{}
+	for _, elem := range sliceOfPorts {
+		try, err := strconv.Atoi(elem)
+		if err != nil {
+			fmt.Println("The inputted ports array is not valid.")
+			os.Exit(1)
+		}
+		if try > 0 && try < 65536 {
+			result = append(result, try)
+		}
+	}
+	return result
+}
