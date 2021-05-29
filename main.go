@@ -1063,3 +1063,34 @@ func threatcrowdSubdomains(domain string, plain bool) []string {
 type CrtShResult struct {
 	Name string `json:"name_value"`
 }
+
+func crtshSubdomains(domain string, plain bool) []string {
+	if !plain {
+		fmt.Print("Searching subs on Crt.sh")
+	}
+	var results []CrtShResult
+	url := "https://crt.sh/?q=%25." + domain + "&output=json"
+	resp, err := http.Get(url)
+	if err != nil {
+		return []string{}
+	}
+	defer resp.Body.Close()
+
+	output := make([]string, 0)
+
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	if err := json.Unmarshal(body, &results); err != nil {
+		return []string{}
+	}
+
+	for _, res := range results {
+		out := strings.Replace(res.Name, "{", "", -1)
+		out = strings.Replace(out, "}", "", -1)
+		output = append(output, out)
+	}
+	if !plain {
+		fmt.Fprint(os.Stdout, "\r \r")
+	}
+	return output
+}
