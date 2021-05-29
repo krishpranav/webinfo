@@ -802,3 +802,25 @@ func checkIgnore(input string) []string {
 	result = deleteUnusefulIgnoreresponses(result)
 	return result
 }
+
+func deleteUnusefulIgnoreresponses(input []string) []string {
+	var result []string
+	toberemoved := []string{}
+	classes := []string{}
+	for _, elem := range input {
+		if strings.Contains(elem, "*") {
+			classes = append(classes, elem)
+		}
+	}
+
+	for _, class := range classes {
+		for _, elem := range input {
+			if class[0] == elem[0] && elem[1] != '*' {
+				toberemoved = append(toberemoved, elem)
+			}
+		}
+	}
+
+	result = Difference(input, toberemoved)
+	return result
+}
