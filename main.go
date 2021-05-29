@@ -999,3 +999,36 @@ func hackerTargetSubdomains(domain string, plain bool) []string {
 	}
 	return result
 }
+
+func bufferOverrunSubdomains(domain string, plain bool) []string {
+	if !plain {
+		fmt.Print("Searching subs on BufferOverrun")
+	}
+	result := make([]string, 0)
+	url := "https://dns.bufferover.run/dns?q=" + domain
+	wrapper := struct {
+		Records []string `json:"FDNS_A"`
+	}{}
+	resp, err := http.Get(url)
+	if err != nil {
+		return result
+	}
+	defer resp.Body.Close()
+	dec := json.NewDecoder(resp.Body)
+
+	dec.Decode(&wrapper)
+	if err != nil {
+		return result
+	}
+	for _, r := range wrapper.Records {
+		parts := strings.SplitN(r, ",", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		result = append(result, parts[1])
+	}
+	if !plain {
+		fmt.Fprint(os.Stdout, "\r \r")
+	}
+	return result
+}
