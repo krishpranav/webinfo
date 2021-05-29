@@ -1059,3 +1059,7 @@ func threatcrowdSubdomains(domain string, plain bool) []string {
 	}
 	return result
 }
+
+type CrtShResult struct {
+	Name string `json:"name_value"`
+}
