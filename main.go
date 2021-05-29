@@ -837,3 +837,24 @@ func Difference(a, b []string) (diff []string) {
 	}
 	return
 }
+
+
+func ignoreClassOk(input string) bool {
+	if strings.Contains(input, "*") {
+		if _, err := strconv.Atoi(string(input[0])); err == nil {
+			i, err := strconv.Atoi(string(input[0]))
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(2)
+			}
+			if i >= 1 && i <= 5 {
+				if input[1] == byte('*') && input[2] == byte('*') {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+
