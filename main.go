@@ -1032,3 +1032,30 @@ func bufferOverrunSubdomains(domain string, plain bool) []string {
 	}
 	return result
 }
+
+func threatcrowdSubdomains(domain string, plain bool) []string {
+	if !plain {
+		fmt.Print("Searching subs on ThreatCrowd")
+	}
+	result := make([]string, 0)
+	url := "https://www.threatcrowd.org/searchApi/v2/domain/report/?domain=" + domain
+	wrapper := struct {
+		Records []string `json:"subdomains"`
+	}{}
+	resp, err := http.Get(url)
+	if err != nil {
+		return result
+	}
+	defer resp.Body.Close()
+	dec := json.NewDecoder(resp.Body)
+
+	dec.Decode(&wrapper)
+	if err != nil {
+		return result
+	}
+	result = append(result, wrapper.Records...)
+	if !plain {
+		fmt.Fprint(os.Stdout, "\r \r")
+	}
+	return result
+}
