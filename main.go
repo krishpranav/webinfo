@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/fatih/color"
@@ -147,6 +148,245 @@ func execute(input Input, subs map[string]Asset, dirs map[string]Asset, common [
 		target := cleanProtocol(input.ReportTarget)
 		var targetIP string
 		fmt.Printf("target: %s\n", target)
+		fmt.Println("=============== FULL REPORT ===============")
+		outputFile := ""
+		if input.ReportOutput != "" {
+			outputFile = createOutputFile(input.ReportTarget, "report", input.ReportOutput)
+			if outputFile[len(outputFile)-4:] == "html" {
+				bannerHTML(input.ReportTarget, outputFile)
+			}
+		}
 
+		fmt.Println("=============== SUBDOMAINS SCANNING ===============")
+		var strings1 []string
+		// change from ip to Hostname
+		if isIP(target) {
+			targetIP = target
+			target = ipToHostname(target)
+		}
+		if outputFile != "" {
+			if outputFile[len(outputFile)-4:] == "html" {
+				headerHTML("SUBDOMAIN SCANNING", outputFile)
+			}
+		}
+		if input.ReportCrawlerSub {
+			go spawnCrawler(target, input.ReportIgnoreSub, dirs, subs, outputFile, mutex, "sub", false)
+		}
+		strings1 = createSubdomains(input.ReportWordSub, target)
+		if input.ReportSubdomainDB {
+			sonar := sonarSubdomains(target, false)
+			strings1 = appendDBSubdomains(sonar, strings1)
+			crtsh := crtshSubdomains(target, false)
+			strings1 = appendDBSubdomains(crtsh, strings1)
+			threatcrowd := threatcrowdSubdomains(target, false)
+			strings1 = appendDBSubdomains(threatcrowd, strings1)
+			hackerTarget := hackerTargetSubdomains(target, false)
+			strings1 = appendDBSubdomains(hackerTarget, strings1)
+			bufferOverrun := bufferOverrunSubdomains(target, false)
+			strings1 = appendDBSubdomains(bufferOverrun, strings1)
+			fmt.Fprint(os.Stdout, "\r \r \r \r")
+		}
+		// be sure to not scan duplicate values
+		strings1 = removeDuplicateValues(strings1)
+		asyncGet(strings1, input.ReportIgnoreSub, outputFile, subs, mutex, false)
+		if outputFile != "" {
+			if outputFile[len(outputFile)-4:] == "html" {
+				footerHTML(outputFile)
+			}
+		}
+
+		if targetIP != "" {
+			target = targetIP
+		}
+		fmt.Println("=============== PORT SCANNING ===============")
+
+		asyncPort(input.portsArray, input.portArrayBool, input.StartPort, input.EndPort, target, outputFile, input.ReportCommon, common, false)
+
+		fmt.Println("=============== DNS SCANNING ===============")
+		lookupDNS(target, outputFile, false)
+
+		fmt.Println("=============== DIRECTORIES SCANNING ===============")
+		var strings2 []string
+		strings2 = createUrls(input.ReportWordDir, target)
+		if outputFile != "" {
+			if outputFile[len(outputFile)-4:] == "html" {
+				headerHTML("DIRECTORY SCANNING", outputFile)
+			}
+		}
+		if input.ReportCrawlerDir {
+			go spawnCrawler(target, input.ReportIgnoreDir, dirs, subs, outputFile, mutex, "dir", false)
+		}
+		asyncDir(strings2, input.ReportIgnoreDir, outputFile, dirs, mutex, false)
+		if outputFile != "" {
+			if outputFile[len(outputFile)-4:] == "html" {
+				footerHTML(outputFile)
+			}
+		}
+		if input.ReportOutput != "" {
+			if outputFile[len(outputFile)-4:] == "html" {
+				bannerFooterHTML(outputFile)
+			}
+		}
+	}
+
+	if input.DNSTarget != "" {
+		if !input.DNSPlain {
+			intro()
+		}
+		target := cleanProtocol(input.DNSTarget)
+		// change from ip to Hostname
+		if isIP(target) {
+			target = ipToHostname(target)
+		}
+		if !input.DNSPlain {
+			fmt.Printf("target: %s\n", target)
+			fmt.Println("=============== DNS SCANNING ===============")
+		}
+		outputFile := ""
+		if input.DNSOutput != "" {
+			outputFile = createOutputFile(input.DNSTarget, "dns", input.DNSOutput)
+
+			if outputFile[len(outputFile)-4:] == "html" {
+				bannerHTML(input.DNSTarget, outputFile)
+			}
+		}
+		lookupDNS(target, outputFile, input.DNSPlain)
+		if input.DNSOutput != "" {
+			if outputFile[len(outputFile)-4:] == "html" {
+				bannerFooterHTML(outputFile)
+			}
+		}
+	}
+
+	if input.SubdomainTarget != "" {
+
+		if !input.SubdomainPlain {
+			intro()
+		}
+
+		target := cleanProtocol(input.SubdomainTarget)
+		// change from ip to Hostname
+		if isIP(target) {
+			target = ipToHostname(target)
+		}
+		if !input.SubdomainPlain {
+			fmt.Printf("target: %s\n", target)
+			fmt.Println("=============== SUBDOMAINS SCANNING ===============")
+		}
+		outputFile := ""
+		if input.SubdomainOutput != "" {
+			outputFile = createOutputFile(input.SubdomainTarget, "subdomain", input.SubdomainOutput)
+			if outputFile[len(outputFile)-4:] == "html" {
+				bannerHTML(input.SubdomainTarget, outputFile)
+			}
+		}
+		var strings1 []string
+		strings1 = createSubdomains(input.SubdomainWord, target)
+		if input.SubdomainDB {
+			sonar := sonarSubdomains(target, input.SubdomainPlain)
+			strings1 = appendDBSubdomains(sonar, strings1)
+			crtsh := crtshSubdomains(target, input.SubdomainPlain)
+			strings1 = appendDBSubdomains(crtsh, strings1)
+			threatcrowd := threatcrowdSubdomains(target, input.SubdomainPlain)
+			strings1 = appendDBSubdomains(threatcrowd, strings1)
+			hackerTarget := hackerTargetSubdomains(target, input.SubdomainPlain)
+			strings1 = appendDBSubdomains(hackerTarget, strings1)
+			bufferOverrun := bufferOverrunSubdomains(target, input.SubdomainPlain)
+			strings1 = appendDBSubdomains(bufferOverrun, strings1)
+			if !input.SubdomainPlain {
+				fmt.Fprint(os.Stdout, "\r \r \r \r")
+			}
+		}
+		if outputFile != "" {
+			if outputFile[len(outputFile)-4:] == "html" {
+				headerHTML("SUBDOMAIN SCANNING", outputFile)
+			}
+		}
+		if input.SubdomainCrawler {
+			go spawnCrawler(target, input.SubdomainIgnore, dirs, subs, outputFile, mutex, "sub", input.SubdomainPlain)
+		}
+		// be sure to not scan duplicate values
+		strings1 = removeDuplicateValues(strings1)
+		asyncGet(strings1, input.SubdomainIgnore, outputFile, subs, mutex, input.SubdomainPlain)
+		if outputFile != "" {
+			if outputFile[len(outputFile)-4:] == "html" {
+				footerHTML(outputFile)
+			}
+		}
+		if input.SubdomainOutput != "" {
+			if outputFile[len(outputFile)-4:] == "html" {
+				bannerFooterHTML(outputFile)
+			}
+		}
+	}
+
+	if input.DirTarget != "" {
+
+		if !input.DirPlain {
+			intro()
+		}
+
+		target := cleanProtocol(input.DirTarget)
+		if !input.DirPlain {
+			fmt.Printf("target: %s\n", target)
+			fmt.Println("=============== DIRECTORIES SCANNING ===============")
+		}
+		outputFile := ""
+		if input.DirOutput != "" {
+			outputFile = createOutputFile(input.DirTarget, "dir", input.DirOutput)
+
+			if outputFile[len(outputFile)-4:] == "html" {
+				bannerHTML(input.DirTarget, outputFile)
+			}
+		}
+		var strings2 []string
+		strings2 = createUrls(input.DirWord, target)
+		if outputFile != "" {
+			if outputFile[len(outputFile)-4:] == "html" {
+				headerHTML("DIRECTORY SCANNING", outputFile)
+			}
+		}
+		if input.DirCrawler {
+			go spawnCrawler(target, input.DirIgnore, dirs, subs, outputFile, mutex, "dir", input.DirPlain)
+		}
+		asyncDir(strings2, input.DirIgnore, outputFile, dirs, mutex, input.DirPlain)
+		if outputFile != "" {
+			if outputFile[len(outputFile)-4:] == "html" {
+				footerHTML(outputFile)
+			}
+		}
+		if input.DirOutput != "" {
+			if outputFile[len(outputFile)-4:] == "html" {
+				bannerFooterHTML(outputFile)
+			}
+		}
+	}
+
+	if input.PortTarget != "" {
+		if !input.PortPlain {
+			intro()
+		}
+		target := input.PortTarget
+		if isURL(target) {
+			target = cleanProtocol(input.PortTarget)
+		}
+		outputFile := ""
+		if input.PortOutput != "" {
+			outputFile = createOutputFile(input.PortTarget, "port", input.PortOutput)
+			if outputFile[len(outputFile)-4:] == "html" {
+				bannerHTML(input.PortTarget, outputFile)
+			}
+		}
+		if !input.PortPlain {
+			fmt.Printf("target: %s\n", target)
+			fmt.Println("=============== PORT SCANNING ===============")
+		}
+		asyncPort(input.portsArray, input.portArrayBool, input.StartPort, input.EndPort, target, outputFile, input.PortCommon, common, input.PortPlain)
+
+		if input.PortOutput != "" {
+			if outputFile[len(outputFile)-4:] == "html" {
+				bannerFooterHTML(outputFile)
+			}
+		}
 	}
 }
