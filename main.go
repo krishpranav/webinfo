@@ -932,3 +932,30 @@ func checkPortsRange(portsRange string, StartPort int, EndPort int) (int, int) {
 	}
 	return StartPort, EndPort
 }
+
+func sonarSubdomains(target string, plain bool) []string {
+	if !plain {
+		fmt.Print("Searching subs on Sonar")
+	}
+	var arr []string
+	resp, err := http.Get("https://sonar.omnisint.io/subdomains/" + target)
+	if err != nil {
+		return arr
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusOK {
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return arr
+		}
+		bodyString := string(bodyBytes)
+		_ = json.Unmarshal([]byte(bodyString), &arr)
+	}
+	for index, elem := range arr {
+		arr[index] = "http://" + elem
+	}
+	if !plain {
+		fmt.Fprint(os.Stdout, "\r \r")
+	}
+	return arr
+}
