@@ -388,3 +388,27 @@ func execute(input Input, subs map[string]Asset, dirs map[string]Asset, common [
 		}
 	}
 }
+
+// clean protocol connections
+func cleanProtocol(target string) string {
+	if len(target) > 6 {
+		// clean protocols and go ahead
+		if target[:6] == "tls://" {
+			target = target[6:]
+		}
+	}
+	if len(target) > 7 {
+		if target[:7] == "http://" {
+			target = target[7:]
+		}
+	}
+	if len(target) > 8 {
+		if target[:8] == "https://" {
+			target = target[8:]
+		}
+	}
+	if target[len(target)-1:] == "/" {
+		return target[:len(target)-1]
+	}
+	return target
+}
