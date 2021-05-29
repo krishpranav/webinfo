@@ -549,4 +549,27 @@ func readArgs() Input {
 	portsArray := []int{}
 	portArrayBool := false
 
+	switch os.Args[1] {
+	case "report":
+		reportCommand.Parse(os.Args[2:])
+	case "dns":
+		dnsCommand.Parse(os.Args[2:])
+	case "subdomain":
+		subdomainCommand.Parse(os.Args[2:])
+	case "port":
+		portCommand.Parse(os.Args[2:])
+	case "dir":
+		dirCommand.Parse(os.Args[2:])
+	case "help":
+		intro()
+		helpCommand.Parse(os.Args[2:])
+	case "examples":
+		intro()
+		examplesCommand.Parse(os.Args[2:])
+	default:
+		intro()
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
 }
