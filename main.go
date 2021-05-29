@@ -1094,3 +1094,8 @@ func crtshSubdomains(domain string, plain bool) []string {
 	}
 	return output
 }
+
+func replaceBadCharacterOutput(input string) string {
+	result := strings.ReplaceAll(input, "/", "-")
+	return result
+}
