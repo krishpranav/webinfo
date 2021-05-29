@@ -771,3 +771,34 @@ func readArgs() Input {
 	}
 	return result
 }
+
+func checkIgnore(input string) []string {
+	result := []string{}
+	temp := strings.Split(input, ",")
+	temp = removeDuplicateValues(temp)
+	for _, elem := range temp {
+		elem := strings.TrimSpace(elem)
+		if len(elem) != 3 {
+			fmt.Println("The status code you entered is invalid (It should consist of three characters).")
+			os.Exit(1)
+		}
+		if ignoreInt, err := strconv.Atoi(elem); err == nil {
+			if 100 <= ignoreInt && ignoreInt <= 599 {
+				result = append(result, elem)
+			} else {
+				fmt.Println("The status code you entered is invalid (100 <= code <= 599).")
+				os.Exit(1)
+			}
+		} else if strings.Contains(elem, "*") {
+			if ignoreClassOk(elem) {
+				result = append(result, elem)
+			} else {
+				fmt.Println("The status code you entered is invalid. You can enter * only as 1**,2**,3**,4**,5**.")
+				os.Exit(1)
+			}
+		}
+	}
+	result = removeDuplicateValues(result)
+	result = deleteUnusefulIgnoreresponses(result)
+	return result
+}
