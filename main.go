@@ -1099,3 +1099,11 @@ func replaceBadCharacterOutput(input string) string {
 	result := strings.ReplaceAll(input, "/", "-")
 	return result
 }
+
+func createOutputFolder() {
+	err := os.Mkdir("output-scilla", 0755)
+	if err != nil {
+		fmt.Println("Can't create output folder.")
+		os.Exit(1)
+	}
+}
