@@ -427,3 +427,40 @@ func outputFormatIsOk(input string) bool {
 	}
 	return false
 }
+
+type Input struct {
+	ReportTarget      string
+	ReportWordDir     string
+	ReportWordSub     string
+	ReportOutput      string
+	ReportIgnoreDir   []string
+	ReportIgnoreSub   []string
+	ReportCrawlerDir  bool
+	ReportCrawlerSub  bool
+	ReportSubdomainDB bool
+	ReportCommon      bool
+	DNSTarget         string
+	DNSOutput         string
+	DNSPlain          bool
+	SubdomainTarget   string
+	SubdomainWord     string
+	SubdomainOutput   string
+	SubdomainIgnore   []string
+	SubdomainCrawler  bool
+	SubdomainDB       bool
+	SubdomainPlain    bool
+	DirTarget         string
+	DirWord           string
+	DirOutput         string
+	DirIgnore         []string
+	DirCrawler        bool
+	DirPlain          bool
+	PortTarget        string
+	PortOutput        string
+	StartPort         int
+	EndPort           int
+	portArrayBool     bool
+	portsArray        []int
+	PortCommon        bool
+	PortPlain         bool
+}
