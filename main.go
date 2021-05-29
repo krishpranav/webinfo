@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -463,4 +464,83 @@ type Input struct {
 	portsArray        []int
 	PortCommon        bool
 	PortPlain         bool
+}
+
+func readArgs() Input {
+	reportCommand := flag.NewFlagSet("report", flag.ExitOnError)
+	dnsCommand := flag.NewFlagSet("dns", flag.ExitOnError)
+	subdomainCommand := flag.NewFlagSet("subdomain", flag.ExitOnError)
+	portCommand := flag.NewFlagSet("port", flag.ExitOnError)
+	dirCommand := flag.NewFlagSet("dir", flag.ExitOnError)
+	helpCommand := flag.NewFlagSet("help", flag.ExitOnError)
+	examplesCommand := flag.NewFlagSet("examples", flag.ExitOnError)
+
+	reportTargetPtr := reportCommand.String("target", "", "Target {URL/IP} (Required)")
+
+	reportPortsPtr := reportCommand.String("p", "", "ports range <start-end>")
+
+	reportWordlistDirPtr := reportCommand.String("wd", "", "wordlist to use for directories (default enabled)")
+
+	reportWordlistSubdomainPtr := reportCommand.String("ws", "", "wordlist to use for subdomains (default enabled)")
+
+	reportOutputPtr := reportCommand.String("o", "", "output format (txt/html)")
+
+	reportIgnoreDirPtr := reportCommand.String("id", "", "Ignore response code(s) for directories scanning")
+	reportIgnoreDir := []string{}
+
+	reportIgnoreSubPtr := reportCommand.String("is", "", "Ignore response code(s) for subdomains scanning")
+	reportIgnoreSub := []string{}
+
+	reportCrawlerDirPtr := reportCommand.Bool("cd", false, "Use also a web crawler for directories enumeration")
+
+	reportCrawlerSubdomainPtr := reportCommand.Bool("cs", false, "Use also a web crawler for subdomains enumeration")
+
+	reportSubdomainDBPtr := reportCommand.Bool("db", false, "Use also a public database for subdomains enumeration")
+
+	reportCommonPtr := reportCommand.Bool("common", false, "Scan common ports")
+
+	dnsTargetPtr := dnsCommand.String("target", "", "Target {URL/IP} (Required)")
+
+	dnsOutputPtr := dnsCommand.String("o", "", "output format (txt/html)")
+
+	dnsPlainPtr := dnsCommand.Bool("plain", false, "Print only results")
+
+	subdomainTargetPtr := subdomainCommand.String("target", "", "Target {URL} (Required)")
+
+	subdomainWordlistPtr := subdomainCommand.String("w", "", "wordlist to use (default enabled)")
+
+	subdomainOutputPtr := subdomainCommand.String("o", "", "output format (txt/html)")
+
+	subdomainIgnorePtr := subdomainCommand.String("i", "", "Ignore response code(s)")
+	subdomainIgnore := []string{}
+
+	subdomainCrawlerPtr := subdomainCommand.Bool("c", false, "Use also a web crawler")
+
+	subdomainDBPtr := subdomainCommand.Bool("db", false, "Use also a public database")
+
+	subdomainPlainPtr := subdomainCommand.Bool("plain", false, "Print only results")
+
+	dirTargetPtr := dirCommand.String("target", "", "Target {URL/IP} (Required)")
+
+	dirWordlistPtr := dirCommand.String("w", "", "wordlist to use (default enabled)")
+
+	dirOutputPtr := dirCommand.String("o", "", "output format (txt/html)")
+
+	dirIgnorePtr := dirCommand.String("i", "", "Ignore response code(s)")
+	dirIgnore := []string{}
+
+	dirCrawlerPtr := dirCommand.Bool("c", false, "Use also a web crawler")
+
+	dirPlainPtr := dirCommand.Bool("plain", false, "Print only results")
+
+	portTargetPtr := portCommand.String("target", "", "Target {URL/IP} (Required)")
+
+	portOutputPtr := portCommand.String("o", "", "output format (txt/html)")
+
+	portsPtr := portCommand.String("p", "", "ports range <start-end>")
+
+	portCommonPtr := portCommand.Bool("common", false, "Scan common ports")
+
+	portPlainPtr := portCommand.Bool("plain", false, "Print only results")
+
 }
