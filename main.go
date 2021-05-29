@@ -543,4 +543,10 @@ func readArgs() Input {
 
 	portPlainPtr := portCommand.Bool("plain", false, "Print only results")
 
+	//default port values
+	StartPort := 1
+	EndPort := 65535
+	portsArray := []int{}
+	portArrayBool := false
+
 }
