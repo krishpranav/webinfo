@@ -159,7 +159,7 @@ func execute(input Input, subs map[string]Asset, dirs map[string]Asset, common [
 
 		fmt.Println("=============== SUBDOMAINS SCANNING ===============")
 		var strings1 []string
-		// change from ip to Hostname
+
 		if isIP(target) {
 			targetIP = target
 			target = ipToHostname(target)
@@ -186,7 +186,7 @@ func execute(input Input, subs map[string]Asset, dirs map[string]Asset, common [
 			strings1 = appendDBSubdomains(bufferOverrun, strings1)
 			fmt.Fprint(os.Stdout, "\r \r \r \r")
 		}
-		// be sure to not scan duplicate values
+
 		strings1 = removeDuplicateValues(strings1)
 		asyncGet(strings1, input.ReportIgnoreSub, outputFile, subs, mutex, false)
 		if outputFile != "" {
@@ -234,7 +234,6 @@ func execute(input Input, subs map[string]Asset, dirs map[string]Asset, common [
 			intro()
 		}
 		target := cleanProtocol(input.DNSTarget)
-		// change from ip to Hostname
 		if isIP(target) {
 			target = ipToHostname(target)
 		}
@@ -265,7 +264,6 @@ func execute(input Input, subs map[string]Asset, dirs map[string]Asset, common [
 		}
 
 		target := cleanProtocol(input.SubdomainTarget)
-		// change from ip to Hostname
 		if isIP(target) {
 			target = ipToHostname(target)
 		}
@@ -305,7 +303,7 @@ func execute(input Input, subs map[string]Asset, dirs map[string]Asset, common [
 		if input.SubdomainCrawler {
 			go spawnCrawler(target, input.SubdomainIgnore, dirs, subs, outputFile, mutex, "sub", input.SubdomainPlain)
 		}
-		// be sure to not scan duplicate values
+
 		strings1 = removeDuplicateValues(strings1)
 		asyncGet(strings1, input.SubdomainIgnore, outputFile, subs, mutex, input.SubdomainPlain)
 		if outputFile != "" {
