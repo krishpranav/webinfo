@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/fatih/color"
 )
@@ -136,4 +137,16 @@ func main() {
 type Asset struct {
 	Value   string
 	Printed bool
+}
+
+func execute(input Input, subs map[string]Asset, dirs map[string]Asset, common []int) {
+
+	var mutex = &sync.Mutex{}
+	if input.ReportTarget != "" {
+		intro()
+		target := cleanProtocol(input.ReportTarget)
+		var targetIP string
+		fmt.Printf("target: %s\n", target)
+
+	}
 }
