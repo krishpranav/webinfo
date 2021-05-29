@@ -1148,3 +1148,10 @@ func createOutputFile(target string, subcommand string, format string) string {
 	}
 	return filename
 }
+
+func isURL(str string) bool {
+	target := cleanProtocol(str)
+	str = "http://" + target
+	u, err := url.Parse(str)
+	return err == nil && u.Hose != ""
+}
