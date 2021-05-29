@@ -113,3 +113,11 @@ func examples() {
 	fmt.Println("		- webinfo report -common -target target.domain")
 	fmt.Println("")
 }
+
+func main() {
+	input := readArgs()
+
+	subs := make(map[string]Asset)
+	dirs := make(map[string]Asset)
+
+}
