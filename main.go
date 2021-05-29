@@ -971,3 +971,31 @@ func appendDBSubdomains(dbsubs []string, urls []string) []string {
 	rand.Shuffle(len(result), func(i, j int) { result[i], result[j] = result[j], result[i] })
 	return result
 }
+
+func hackerTargetSubdomains(domain string, plain bool) []string {
+	if !plain {
+		fmt.Print("Searching subs on HackerTarget")
+	}
+	result := make([]string, 0)
+	raw, err := http.Get("https://api.hackertarget.com/hostsearch/?q=" + domain)
+	if err != nil {
+		return result
+	}
+	res, err := ioutil.ReadAll(raw.Body)
+	if err != nil {
+		return result
+	}
+	raw.Body.Close()
+	sc := bufio.NewScanner(bytes.NewReader(res))
+	for sc.Scan() {
+		parts := strings.SplitN(sc.Text(), ",", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		result = append(result, parts[0])
+	}
+	if !plain {
+		fmt.Fprint(os.Stdout, "\r \r")
+	}
+	return result
+}
