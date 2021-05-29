@@ -1,27 +1,40 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"math/rand"
+	"net"
+	"net/http"
+	"net/url"
 	"os"
+	"regexp"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fatih/color"
+	"github.com/gocolly/colly"
 )
 
 func intro() {
-	banner := "WEB INFO GATHER"
-	banner2 := "> github.com/krishpranav/webinfo"
-	banner3 := "> Author: krishpranav"
-	bannerPart1 := banner
+	banner1 := "WEB INFO GATHER"
+	banner2 := "> github.com/krishpranav"
+	banner3 := "Author: krishpranav"
+	bannerPart1 := banner1
 	bannerPart2 := banner2 + banner3
 	color.Cyan("%s\n", bannerPart1)
 	fmt.Println(bannerPart2)
-	fmt.Println("================================")
+	fmt.Println("=========================")
 }
 
-// help function for printing the usage of web info
 func help() {
 	fmt.Println("Information Gathering tool - DNS / Subdomain / Ports / Directories enumeration")
 	fmt.Println("")
@@ -120,6 +133,7 @@ func examples() {
 
 func main() {
 	input := readArgs()
+
 	subs := make(map[string]Asset)
 	dirs := make(map[string]Asset)
 
@@ -236,6 +250,7 @@ func execute(input Input, subs map[string]Asset, dirs map[string]Asset, common [
 			intro()
 		}
 		target := cleanProtocol(input.DNSTarget)
+
 		if isIP(target) {
 			target = ipToHostname(target)
 		}
@@ -266,6 +281,7 @@ func execute(input Input, subs map[string]Asset, dirs map[string]Asset, common [
 		}
 
 		target := cleanProtocol(input.SubdomainTarget)
+
 		if isIP(target) {
 			target = ipToHostname(target)
 		}
@@ -391,7 +407,6 @@ func execute(input Input, subs map[string]Asset, dirs map[string]Asset, common [
 	}
 }
 
-// clean protocol connections
 func cleanProtocol(target string) string {
 	if len(target) > 6 {
 		// clean protocols and go ahead
@@ -543,19 +558,25 @@ func readArgs() Input {
 
 	portPlainPtr := portCommand.Bool("plain", false, "Print only results")
 
+	// Default ports
 	StartPort := 1
 	EndPort := 65535
 	portsArray := []int{}
 	portArrayBool := false
 
+	// Verify that a subcommand has been provided
+	// os.Arg[0] is the main command
+	// os.Arg[1] will be the subcommand
 	if len(os.Args) < 2 {
 		intro()
 		fmt.Println("[ERROR] subcommand is required.")
-		fmt.Println("	Type: scilla help      - Full overview of the commands.")
-		fmt.Println("	Type: scilla examples  - Some explanatory examples.")
+		fmt.Println("	Type: webinfo help      - Full overview of the commands.")
+		fmt.Println("	Type: webinfo examples  - Some explanatory examples.")
 		os.Exit(1)
 	}
 
+	// Switch on the subcommand
+	// Parse the flags for appropriate FlagSet
 	switch os.Args[1] {
 	case "report":
 		reportCommand.Parse(os.Args[2:])
@@ -579,13 +600,15 @@ func readArgs() Input {
 		os.Exit(1)
 	}
 
+	// REPORT subcommand
 	if reportCommand.Parsed() {
 
+		// Required Flags
 		if *reportTargetPtr == "" {
 			reportCommand.PrintDefaults()
 			os.Exit(1)
 		}
-
+		//Verify good inputs
 		if !isURL(*reportTargetPtr) {
 			fmt.Println("The inputted target is not valid.")
 			os.Exit(1)
@@ -594,7 +617,7 @@ func readArgs() Input {
 			fmt.Println("The output format is not valid.")
 			os.Exit(1)
 		}
-
+		//common and p not together
 		if *reportPortsPtr != "" && *reportCommonPtr {
 			fmt.Println("You can't specify a port range and common option together.")
 			os.Exit(1)
@@ -628,12 +651,15 @@ func readArgs() Input {
 		}
 	}
 
+	// DNS subcommand
 	if dnsCommand.Parsed() {
 
+		// Required Flags
 		if *dnsTargetPtr == "" {
 			dnsCommand.PrintDefaults()
 			os.Exit(1)
 		}
+		//Verify good inputs
 		if !isURL(*dnsTargetPtr) {
 			fmt.Println("The inputted target is not valid.")
 			os.Exit(1)
@@ -644,12 +670,15 @@ func readArgs() Input {
 		}
 	}
 
+	// SUBDOMAIN subcommand
 	if subdomainCommand.Parsed() {
 
+		// Required Flags
 		if *subdomainTargetPtr == "" {
 			subdomainCommand.PrintDefaults()
 			os.Exit(1)
 		}
+		//Verify good inputs
 		if !isURL(*subdomainTargetPtr) {
 			fmt.Println("The inputted target is not valid.")
 			os.Exit(1)
@@ -664,12 +693,15 @@ func readArgs() Input {
 		}
 	}
 
+	// PORT subcommand
 	if portCommand.Parsed() {
+
+		// Required Flags
 		if *portTargetPtr == "" {
 			portCommand.PrintDefaults()
 			os.Exit(1)
 		}
-
+		//common and p not together
 		if *portsPtr != "" && *portCommonPtr {
 			fmt.Println("You can't specify a port range and common option together.")
 			os.Exit(1)
@@ -692,7 +724,7 @@ func readArgs() Input {
 				portArrayBool = false
 			}
 		}
-
+		//Verify good inputs
 		if !isURL(*portTargetPtr) {
 			fmt.Println("The inputted target is not valid.")
 			os.Exit(1)
@@ -703,12 +735,15 @@ func readArgs() Input {
 		}
 	}
 
+	// DIR subcommand
 	if dirCommand.Parsed() {
 
+		// Required Flags
 		if *dirTargetPtr == "" {
 			dirCommand.PrintDefaults()
 			os.Exit(1)
 		}
+		//Verify good inputs
 		if !isURL(*dirTargetPtr) {
 			fmt.Println("The inputted target is not valid.")
 			os.Exit(1)
@@ -723,12 +758,16 @@ func readArgs() Input {
 		}
 	}
 
+	// HELP subcommand
 	if helpCommand.Parsed() {
+		// Print help
 		help()
 		os.Exit(0)
 	}
 
+	// EXAMPLES subcommand
 	if examplesCommand.Parsed() {
+		// Print examples
 		examples()
 		os.Exit(0)
 	}
@@ -772,6 +811,7 @@ func readArgs() Input {
 	return result
 }
 
+//checkIgnore checks the inputted status code to be ignored
 func checkIgnore(input string) []string {
 	result := []string{}
 	temp := strings.Split(input, ",")
@@ -783,6 +823,7 @@ func checkIgnore(input string) []string {
 			os.Exit(1)
 		}
 		if ignoreInt, err := strconv.Atoi(elem); err == nil {
+			// if it is a valid status code without * (e.g. 404)
 			if 100 <= ignoreInt && ignoreInt <= 599 {
 				result = append(result, elem)
 			} else {
@@ -790,6 +831,7 @@ func checkIgnore(input string) []string {
 				os.Exit(1)
 			}
 		} else if strings.Contains(elem, "*") {
+			// if it is a valid status code without * (e.g. 4**)
 			if ignoreClassOk(elem) {
 				result = append(result, elem)
 			} else {
@@ -803,6 +845,8 @@ func checkIgnore(input string) []string {
 	return result
 }
 
+//deleteUnusefulIgnoreresponses removes from to-be-ignored arrays
+//the responses included yet with * as classes
 func deleteUnusefulIgnoreresponses(input []string) []string {
 	var result []string
 	toberemoved := []string{}
@@ -812,7 +856,6 @@ func deleteUnusefulIgnoreresponses(input []string) []string {
 			classes = append(classes, elem)
 		}
 	}
-
 	for _, class := range classes {
 		for _, elem := range input {
 			if class[0] == elem[0] && elem[1] != '*' {
@@ -820,11 +863,11 @@ func deleteUnusefulIgnoreresponses(input []string) []string {
 			}
 		}
 	}
-
 	result = Difference(input, toberemoved)
 	return result
 }
 
+//Difference A - B
 func Difference(a, b []string) (diff []string) {
 	m := make(map[string]bool)
 	for _, item := range b {
@@ -838,12 +881,14 @@ func Difference(a, b []string) (diff []string) {
 	return
 }
 
-
+//ignoreClass states if the class of ignored status codes
+//is correct or not (4**,2**...)
 func ignoreClassOk(input string) bool {
 	if strings.Contains(input, "*") {
 		if _, err := strconv.Atoi(string(input[0])); err == nil {
 			i, err := strconv.Atoi(string(input[0]))
 			if err != nil {
+				// handle error
 				fmt.Println(err)
 				os.Exit(2)
 			}
@@ -857,6 +902,8 @@ func ignoreClassOk(input string) bool {
 	return false
 }
 
+//checkPortsArray checks the basic rules to
+//be valid and then returns the ports array to scan.
 func checkPortsArray(input string) []int {
 	delimiter := byte(',')
 	sliceOfPorts := strings.Split(input, string(delimiter))
@@ -875,10 +922,14 @@ func checkPortsArray(input string) []int {
 	return result
 }
 
+//checkPortsRange checks the basic rules to
+//be valid and then returns the starting port and the ending port.
 func checkPortsRange(portsRange string, StartPort int, EndPort int) (int, int) {
-
+	// If there's ports range, define it as inputs for the struct
 	delimiter := byte('-')
+	//If there is only one number
 
+	// If starting port isn't specified
 	if portsRange[0] == delimiter {
 		maybeEnd, err := strconv.Atoi(portsRange[1:])
 		if err != nil {
@@ -889,6 +940,7 @@ func checkPortsRange(portsRange string, StartPort int, EndPort int) (int, int) {
 			EndPort = maybeEnd
 		}
 	} else if portsRange[len(portsRange)-1] == delimiter {
+		// If ending port isn't specified
 		maybeStart, err := strconv.Atoi(portsRange[:len(portsRange)-1])
 		if err != nil {
 			fmt.Println("The inputted port range is not valid.")
@@ -898,6 +950,7 @@ func checkPortsRange(portsRange string, StartPort int, EndPort int) (int, int) {
 			StartPort = maybeStart
 		}
 	} else if !strings.Contains(portsRange, string(delimiter)) {
+		// If a single port is specified
 		maybePort, err := strconv.Atoi(portsRange)
 		if err != nil {
 			fmt.Println("The inputted port range is not valid.")
@@ -908,6 +961,7 @@ func checkPortsRange(portsRange string, StartPort int, EndPort int) (int, int) {
 			EndPort = maybePort
 		}
 	} else {
+		// If a range is specified
 		sliceOfPorts := strings.Split(portsRange, string(delimiter))
 		if len(sliceOfPorts) != 2 {
 			fmt.Println("The inputted port range is not valid.")
@@ -933,6 +987,7 @@ func checkPortsRange(portsRange string, StartPort int, EndPort int) (int, int) {
 	return StartPort, EndPort
 }
 
+//sonarSubdomains retrieves from the below url some known subdomains.
 func sonarSubdomains(target string, plain bool) []string {
 	if !plain {
 		fmt.Print("Searching subs on Sonar")
@@ -960,6 +1015,8 @@ func sonarSubdomains(target string, plain bool) []string {
 	return arr
 }
 
+//appendDBSubdomains appends to the subdomains in the list
+//the subdomains found with the open DBs.
 func appendDBSubdomains(dbsubs []string, urls []string) []string {
 	if len(dbsubs) == 0 {
 		return urls
@@ -972,6 +1029,7 @@ func appendDBSubdomains(dbsubs []string, urls []string) []string {
 	return result
 }
 
+//hackerTargetSubdomain retrieves from the below url some known subdomains.
 func hackerTargetSubdomains(domain string, plain bool) []string {
 	if !plain {
 		fmt.Print("Searching subs on HackerTarget")
@@ -1000,6 +1058,7 @@ func hackerTargetSubdomains(domain string, plain bool) []string {
 	return result
 }
 
+//bufferOverrunSubdomains retrieves from the below url some known subdomains.
 func bufferOverrunSubdomains(domain string, plain bool) []string {
 	if !plain {
 		fmt.Print("Searching subs on BufferOverrun")
@@ -1033,6 +1092,7 @@ func bufferOverrunSubdomains(domain string, plain bool) []string {
 	return result
 }
 
+//threatcrowdSubdomains retrieves from the below url some known subdomains.
 func threatcrowdSubdomains(domain string, plain bool) []string {
 	if !plain {
 		fmt.Print("Searching subs on ThreatCrowd")
@@ -1060,10 +1120,12 @@ func threatcrowdSubdomains(domain string, plain bool) []string {
 	return result
 }
 
+//CrtShResult
 type CrtShResult struct {
 	Name string `json:"name_value"`
 }
 
+//crtshSubdomains retrieves from the below url some known subdomains.
 func crtshSubdomains(domain string, plain bool) []string {
 	if !plain {
 		fmt.Print("Searching subs on Crt.sh")
@@ -1095,28 +1157,33 @@ func crtshSubdomains(domain string, plain bool) []string {
 	return output
 }
 
+//replaceBadCharacterOutput
 func replaceBadCharacterOutput(input string) string {
 	result := strings.ReplaceAll(input, "/", "-")
 	return result
 }
 
+//createOutputFolder
 func createOutputFolder() {
-	err := os.Mkdir("output-scilla", 0755)
+	//Create a folder/directory at a full qualified path
+	err := os.Mkdir("output-webinfo", 0755)
 	if err != nil {
 		fmt.Println("Can't create output folder.")
 		os.Exit(1)
 	}
 }
 
+//createOutputFile
 func createOutputFile(target string, subcommand string, format string) string {
 	target = replaceBadCharacterOutput(target)
-	filename := "output-scilla" + "/" + target + "." + subcommand + "." + format
+	filename := "output-webinfo" + "/" + target + "." + subcommand + "." + format
 	_, err := os.Stat(filename)
 
 	if os.IsNotExist(err) {
-		if _, err := os.Stat("output-scilla/"); os.IsNotExist(err) {
+		if _, err := os.Stat("output-webinfo/"); os.IsNotExist(err) {
 			createOutputFolder()
 		}
+		// If the file doesn't exist, create it.
 		f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			fmt.Println("Can't create output file.")
@@ -1124,6 +1191,7 @@ func createOutputFile(target string, subcommand string, format string) string {
 		}
 		f.Close()
 	} else {
+		// The file already exists, check what the user want.
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("The output file already esists, do you want to overwrite? (Y/n): ")
 		text, _ := reader.ReadString('\n')
@@ -1149,9 +1217,737 @@ func createOutputFile(target string, subcommand string, format string) string {
 	return filename
 }
 
+//isUrl checks if the inputted Url is valid
 func isURL(str string) bool {
 	target := cleanProtocol(str)
 	str = "http://" + target
 	u, err := url.Parse(str)
-	return err == nil && u.Hose != ""
+	return err == nil && u.Host != ""
+}
+
+//isIP
+func isIP(ip string) bool {
+	return net.ParseIP(ip) != nil
+}
+
+//ipToHostname
+func ipToHostname(ip string) string {
+	addr, err := net.LookupAddr(ip)
+	if err != nil || len(addr) == 0 {
+		log.Fatalf("Failed to resolve ip address %s", ip)
+	}
+	return strings.TrimSuffix(addr[0], ".")
+}
+
+//get performs an HTTP GET request to the target
+func get(url string) bool {
+	resp, err := http.Get(url)
+	if err != nil {
+		return false
+	}
+	resp.Body.Close()
+	return true
+}
+
+//buildUrl returns full URL with the subdomain
+func buildURL(subdomain string, domain string) string {
+	return "http://" + subdomain + "." + domain
+}
+
+//appendDir returns full URL with the directory
+func appendDir(domain string, dir string) (string, string) {
+	return "http://" + domain + "/" + dir + "/", "http://" + domain + "/" + dir
+}
+
+//readDict scan all the possible subdomains from file
+func readDictSubs(inputFile string) []string {
+	file, err := os.Open(inputFile)
+	if err != nil {
+		log.Fatalf("failed to open %s ", inputFile)
+	}
+	scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanLines)
+	var text []string
+	for scanner.Scan() {
+		text = append(text, scanner.Text())
+	}
+	file.Close()
+	return text
+}
+
+//readDict scan all the possible dirs from file
+func readDictDirs(inputFile string) []string {
+	file, err := os.Open(inputFile)
+	if err != nil {
+		log.Fatalf("failed to open %s ", inputFile)
+	}
+	scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanLines)
+	var text []string
+	var dir = ""
+	for scanner.Scan() {
+		dir = scanner.Text()
+		if len(dir) > 0 {
+			if string(dir[len(dir)-1:]) == "/" {
+				dir = dir[:len(dir)-1]
+			}
+			text = append(text, dir)
+		}
+	}
+	file.Close()
+	text = removeDuplicateValues(text)
+	return text
+}
+
+//removeDuplicateValues
+func removeDuplicateValues(intSlice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range intSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
+}
+
+//createSubdomains returns a list of subdomains
+//from the default file lists/subdomains.txt.
+func createSubdomains(filename string, url string) []string {
+	var subs []string
+	if filename == "" {
+		if runtime.GOOS == "windows" {
+			subs = readDictSubs("lists/subdomains.txt")
+		} else { // linux
+			subs = readDictSubs("/usr/bin/lists/subdomains.txt")
+		}
+	} else {
+		subs = readDictSubs(filename)
+	}
+	result := []string{}
+	for _, sub := range subs {
+		path := buildURL(sub, url)
+		result = append(result, path)
+	}
+	return result
+}
+
+//createUrls returns a list of directories
+//from the default file lists/dirs.txt.
+func createUrls(filename string, url string) []string {
+	var dirs []string
+	if filename == "" {
+		if runtime.GOOS == "windows" {
+			dirs = readDictDirs("lists/dirs.txt")
+		} else { // linux
+			dirs = readDictDirs("/usr/bin/lists/dirs.txt")
+		}
+	} else {
+		dirs = readDictDirs(filename)
+	}
+	result := []string{}
+	for _, dir := range dirs {
+		path, path2 := appendDir(url, dir)
+		result = append(result, path)
+		result = append(result, path2)
+	}
+	return result
+}
+
+//appendOutputToTxt
+func appendOutputToTxt(output string, filename string) {
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	if _, err := file.WriteString(cleanProtocol(output) + "\n"); err != nil {
+		log.Fatal(err)
+	}
+	file.Close()
+}
+
+//bannerHTML
+func bannerHTML(target string, filename string) {
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer file.Close()
+	file.WriteString("<html><body><div style='" + "background-color:#4adeff;color:white" + "'><h1>webinfo - Information Gathering Tool</h1>")
+	file.WriteString("<ul>")
+	file.WriteString("<li><a href='" + "https://github.com/edoardottt/webinfo'" + ">github.com/edoardottt/webinfo</a></li>")
+	file.WriteString("<li>edoardottt, <a href='" + "https://www.edoardoottavianelli.it'" + ">edoardoottavianelli.it</a></li>")
+	file.WriteString("<li>Released under <a href='" + "http://www.gnu.org/licenses/gpl-3.0.html'" + ">GPLv3 License</a></li></ul></div>")
+	file.WriteString("<h4>target: " + target + "</h4>")
+	file.Close()
+}
+
+//appendOutputToHtml
+func appendOutputToHTML(output string, status string, filename string) {
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer file.Close()
+	var statusColor string
+	if status != "" {
+		if string(status[0]) == "2" || string(status[0]) == "3" {
+			statusColor = "<p style='color:green;display:inline'>" + status + "</p>"
+		} else {
+			statusColor = "<p style='color:red;display:inline'>" + status + "</p>"
+		}
+	} else {
+		statusColor = status
+	}
+	if _, err := file.WriteString("<li><a target='_blank' href='" + output + "'>" + cleanProtocol(output) + "</a> " + statusColor + "</li>"); err != nil {
+		log.Fatal(err)
+	}
+	file.Close()
+}
+
+//headerHtml
+func headerHTML(header string, filename string) {
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	if _, err := file.WriteString("<h3>" + header + "</h3><ul>"); err != nil {
+		log.Fatal(err)
+	}
+	file.Close()
+}
+
+//footerHTML
+func footerHTML(filename string) {
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer file.Close()
+	if _, err := file.WriteString("</ul>"); err != nil {
+		log.Fatal(err)
+	}
+	file.Close()
+}
+
+//bannerFooterHTML
+func bannerFooterHTML(filename string) {
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	file.WriteString("<div style='" + "background-color:#4adeff;color:white" + "'>")
+	file.WriteString("<ul><li><a href='" + "https://github.com/edoardottt/webinfo'" + ">Contribute to webinfo</a></li>")
+	file.WriteString("<li>Released under <a href='" + "http://www.gnu.org/licenses/gpl-3.0.html'" + ">GPLv3 License</a></li></ul></div>")
+	file.Close()
+}
+
+//percentage
+func percentage(done, total int) float64 {
+	result := (float64(done) / float64(total)) * 100
+	return result
+}
+
+//ignoreResponse returns a boolean if the response
+//should be ignored or not.
+func ignoreResponse(response int, ignore []string) bool {
+	responseString := strconv.Itoa(response)
+	// if I don't have to ignore responses, just return true
+	if len(ignore) == 0 {
+		return false
+	}
+	for _, ignorePort := range ignore {
+		if strings.Contains(ignorePort, "*") {
+			if responseString[0] == ignorePort[0] {
+				return true
+			}
+		}
+		if responseString == ignorePort {
+			return true
+		}
+	}
+	return false
+}
+
+//asyncGet performs concurrent requests to the specified
+//urls and prints the results
+func asyncGet(urls []string, ignore []string, outputFile string, subs map[string]Asset, mutex *sync.Mutex, plain bool) {
+	ignoreBool := len(ignore) != 0
+	var count int = 0
+	var total int = len(urls)
+	client := http.Client{
+		Timeout: 10 * time.Second,
+	}
+	limiter := make(chan string, 10) // Limits simultaneous requests
+	wg := sync.WaitGroup{}           // Needed to not prematurely exit before all requests have been finished
+
+	for i, domain := range urls {
+		limiter <- domain
+		wg.Add(1)
+		if count%50 == 0 { // update counter
+			if !plain {
+				fmt.Fprint(os.Stdout, "\r \r")
+			}
+			printSubs(subs, ignore, outputFile, mutex, plain)
+		}
+		if !plain && count%100 == 0 { // update counter
+			fmt.Fprint(os.Stdout, "\r \r")
+			fmt.Printf("%0.2f%% : %d / %d", percentage(count, total), count, total)
+		}
+		go func(i int, domain string) {
+			defer wg.Done()
+			defer func() { <-limiter }()
+			resp, err := client.Get(domain)
+			count++
+			if err != nil {
+				return
+			}
+			if ignoreBool {
+				if ignoreResponse(resp.StatusCode, ignore) {
+					return
+				}
+			}
+			addSubs(domain, resp.Status, subs, mutex)
+			resp.Body.Close()
+		}(i, domain)
+	}
+	printSubs(subs, ignore, outputFile, mutex, plain)
+	wg.Wait()
+	printSubs(subs, ignore, outputFile, mutex, plain)
+}
+
+//appendWhere (html or txt file)
+func appendWhere(what string, status string, outputFile string) {
+	if outputFile[len(outputFile)-4:] == "html" {
+		appendOutputToHTML(what, status, outputFile)
+	} else {
+		appendOutputToTxt(what, outputFile)
+	}
+}
+
+//isOpenPort scans if a port is open
+func isOpenPort(host string, port string) bool {
+	timeout := 3 * time.Second
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), timeout)
+	if err != nil {
+		return false
+	}
+	if conn != nil {
+		defer conn.Close()
+		return true
+	}
+	return false
+}
+
+//asyncPort performs concurrent requests to the specified
+//ports range and, if someone is open it prints the results
+func asyncPort(portsArray []int, portsArrayBool bool, StartingPort int, EndingPort int, host string, outputFile string, common bool, commonPorts []int, plain bool) {
+	var count int = 0
+	var total int = (EndingPort - StartingPort) + 1
+	if portsArrayBool {
+		total = len(portsArray)
+	}
+	limiter := make(chan string, 200) // Limits simultaneous requests
+	wg := sync.WaitGroup{}            // Needed to not prematurely exit before all requests have been finished
+	if outputFile != "" {
+		if outputFile[len(outputFile)-4:] == "html" {
+			headerHTML("PORT SCANNING", outputFile)
+		}
+	}
+	ports := []int{}
+	if !common {
+		if portsArrayBool {
+			ports = portsArray
+		} else {
+			for port := StartingPort; port <= EndingPort; port++ {
+				ports = append(ports, port)
+			}
+		}
+	} else {
+		ports = commonPorts
+	}
+	for _, port := range ports {
+		wg.Add(1)
+		portStr := fmt.Sprint(port)
+		limiter <- portStr
+		if !plain && count%100 == 0 { // update counter
+			fmt.Fprint(os.Stdout, "\r \r")
+			fmt.Printf("%0.2f%% : %d / %d", percentage(count, total), count, total)
+		}
+		go func(portStr string, host string) {
+			defer func() { <-limiter }()
+			defer wg.Done()
+			resp := isOpenPort(host, portStr)
+			count++
+			if resp {
+				if !plain {
+					fmt.Fprint(os.Stdout, "\r \r")
+					fmt.Printf("[+]FOUND: %s ", host)
+					color.Green("%s\n", portStr)
+				} else {
+					fmt.Printf("%s\n", portStr)
+				}
+				if outputFile != "" {
+					appendWhere("http://"+host+":"+portStr, "", outputFile)
+				}
+			}
+		}(portStr, host)
+	}
+	wg.Wait()
+	fmt.Fprint(os.Stdout, "\r \r")
+	if outputFile != "" {
+		if outputFile[len(outputFile)-4:] == "html" {
+			footerHTML(outputFile)
+		}
+	}
+}
+
+//lookupDNS prints the DNS informations for the inputted domain
+func lookupDNS(domain string, outputFile string, plain bool) {
+	if outputFile != "" {
+		if outputFile[len(outputFile)-4:] == "html" {
+			headerHTML("DNS SCANNING", outputFile)
+		}
+	}
+	// -- A RECORDS --
+	ips, err := net.LookupIP(domain)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not get IPs: %v\n", err)
+	}
+	for _, ip := range ips {
+		if !plain {
+			fmt.Printf("[+]FOUND %s IN A: ", domain)
+			color.Green("%s\n", ip.String())
+		} else {
+			fmt.Printf("%s\n", ip.String())
+		}
+		if outputFile != "" {
+			appendWhere(ip.String(), "", outputFile)
+		}
+	}
+	// -- CNAME RECORD --
+	cname, err := net.LookupCNAME(domain)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not get CNAME: %v\n", err)
+	}
+	if !plain {
+		fmt.Printf("[+]FOUND %s IN CNAME: ", domain)
+		color.Green("%s\n", cname)
+	} else {
+		fmt.Printf("%s\n", cname)
+	}
+	if outputFile != "" {
+		appendWhere(cname, "", outputFile)
+	}
+	// -- NS RECORDS --
+	nameserver, err := net.LookupNS(domain)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not get NSs: %v\n", err)
+	}
+	for _, ns := range nameserver {
+		if !plain {
+			fmt.Printf("[+]FOUND %s IN NS: ", domain)
+			color.Green("%s\n", ns.Host)
+		} else {
+			fmt.Printf("%s\n", ns.Host)
+		}
+		if outputFile != "" {
+			appendWhere(ns.Host, "", outputFile)
+		}
+	}
+	// -- MX RECORDS --
+	mxrecords, err := net.LookupMX(domain)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not get MXs: %v\n", err)
+	}
+	for _, mx := range mxrecords {
+		if !plain {
+			fmt.Printf("[+]FOUND %s IN MX: ", domain)
+			color.Green("%s %v\n", mx.Host, mx.Pref)
+		} else {
+			fmt.Printf("%s %v\n", mx.Host, mx.Pref)
+		}
+		if outputFile != "" {
+			appendWhere(mx.Host, "", outputFile)
+		}
+	}
+	_, srvs, err := net.LookupSRV("xmpp-server", "tcp", domain)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not get SRVs: %v\n", err)
+	}
+	for _, srv := range srvs {
+		if !plain {
+			fmt.Printf("[+]FOUND %s IN SRV: ", domain)
+			color.Green("%v:%v:%d:%d\n", srv.Target, srv.Port, srv.Priority, srv.Weight)
+		} else {
+			fmt.Printf("%v:%v:%d:%d\n", srv.Target, srv.Port, srv.Priority, srv.Weight)
+		}
+		if outputFile != "" {
+			appendWhere(srv.Target, "", outputFile)
+		}
+	}
+	txtrecords, _ := net.LookupTXT(domain)
+	for _, txt := range txtrecords {
+		if !plain {
+			fmt.Printf("[+]FOUND %s IN TXT: ", domain)
+			color.Green("%s\n", txt)
+		} else {
+			fmt.Printf("%s\n", txt)
+		}
+		if outputFile != "" {
+			appendWhere(txt, "", outputFile)
+		}
+	}
+	if outputFile != "" {
+		if outputFile[len(outputFile)-4:] == "html" {
+			footerHTML(outputFile)
+		}
+	}
+}
+
+func asyncDir(urls []string, ignore []string, outputFile string, dirs map[string]Asset, mutex *sync.Mutex, plain bool) {
+	ignoreBool := len(ignore) != 0
+	var count int = 0
+	var total int = len(urls)
+	client := http.Client{
+		Timeout: 10 * time.Second,
+	}
+	limiter := make(chan string, 30)
+	wg := sync.WaitGroup{}
+	for i, domain := range urls {
+		limiter <- domain
+		wg.Add(1)
+		if count%50 == 0 {
+			if !plain {
+				fmt.Fprint(os.Stdout, "\r \r")
+			}
+			printDirs(dirs, ignore, outputFile, mutex, plain)
+		}
+		if !plain && count%100 == 0 {
+			fmt.Fprint(os.Stdout, "\r \r")
+			fmt.Printf("%0.2f%% : %d / %d", percentage(count, total), count, total)
+		}
+		go func(i int, domain string) {
+			defer wg.Done()
+			defer func() { <-limiter }()
+			resp, err := client.Get(domain)
+			count++
+			if err != nil {
+				return
+			}
+			if ignoreBool {
+				if ignoreResponse(resp.StatusCode, ignore) {
+					return
+				}
+			}
+			addDirs(domain, resp.Status, dirs, mutex)
+			resp.Body.Close()
+		}(i, domain)
+	}
+	printDirs(dirs, ignore, outputFile, mutex, plain)
+	wg.Wait()
+	printDirs(dirs, ignore, outputFile, mutex, plain)
+}
+
+func printSubs(subs map[string]Asset, ignore []string, outputFile string, mutex *sync.Mutex, plain bool) {
+	mutex.Lock()
+	for domain, asset := range subs {
+		if !asset.Printed {
+			sub := Asset{
+				Value:   asset.Value,
+				Printed: true,
+			}
+			subs[domain] = sub
+			var resp = asset.Value
+			if !plain {
+				fmt.Fprint(os.Stdout, "\r \r")
+				if resp[:3] != "404" {
+					subDomainFound := cleanProtocol(domain)
+					fmt.Printf("[+]FOUND: %s ", subDomainFound)
+					if string(resp[0]) == "2" {
+						if outputFile != "" {
+							appendWhere(domain, fmt.Sprint(resp), outputFile)
+						}
+						color.Green("%s\n", resp)
+					} else {
+						if outputFile != "" {
+							appendWhere(domain, fmt.Sprint(resp), outputFile)
+						}
+						color.Red("%s\n", resp)
+					}
+				}
+			} else {
+				if resp[:3] != "404" {
+					subDomainFound := cleanProtocol(domain)
+					fmt.Printf("%s\n", subDomainFound)
+					if string(resp[0]) == "2" {
+						if outputFile != "" {
+							appendWhere(domain, fmt.Sprint(resp), outputFile)
+						}
+					} else {
+						if outputFile != "" {
+							appendWhere(domain, fmt.Sprint(resp), outputFile)
+						}
+					}
+				}
+			}
+		}
+	}
+	mutex.Unlock()
+}
+
+func printDirs(dirs map[string]Asset, ignore []string, outputFile string, mutex *sync.Mutex, plain bool) {
+	mutex.Lock()
+	for domain, asset := range dirs {
+		if !asset.Printed {
+			dir := Asset{
+				Value:   asset.Value,
+				Printed: true,
+			}
+			dirs[domain] = dir
+			var resp = asset.Value
+			if !plain {
+				if string(resp[0]) == "2" || string(resp[0]) == "3" {
+					fmt.Fprint(os.Stdout, "\r \r")
+					fmt.Printf("[+]FOUND: %s ", domain)
+					color.Green("%s\n", resp)
+					if outputFile != "" {
+						appendWhere(domain, fmt.Sprint(resp), outputFile)
+					}
+				} else if (resp[:3] != "404") || string(resp[0]) == "5" {
+					fmt.Fprint(os.Stdout, "\r \r")
+					fmt.Printf("[+]FOUND: %s ", domain)
+					color.Red("%s\n", resp)
+
+					if outputFile != "" {
+						appendWhere(domain, fmt.Sprint(resp), outputFile)
+					}
+				}
+			} else {
+				if resp[:3] != "404" {
+					fmt.Printf("%s\n", domain)
+					if outputFile != "" {
+						appendWhere(domain, fmt.Sprint(resp), outputFile)
+					}
+				}
+			}
+		}
+	}
+	mutex.Unlock()
+}
+
+func cleanURL(input string) string {
+	u, err := url.Parse(input)
+	if err != nil {
+		return input
+	}
+	return u.Scheme + "://" + u.Host + u.Path
+}
+
+func spawnCrawler(target string, ignore []string, dirs map[string]Asset, subs map[string]Asset, outputFile string, mutex *sync.Mutex, what string, plain bool) {
+	ignoreBool := len(ignore) != 0
+	c := colly.NewCollector()
+	if what == "dir" {
+		c = colly.NewCollector(
+			colly.URLFilters(
+				regexp.MustCompile("(http://|https://|ftp://)" + "(www.)?" + target + "*"),
+			),
+		)
+	} else {
+		c = colly.NewCollector(
+			colly.URLFilters(
+				regexp.MustCompile("(http://|https://|ftp://)" + "+." + target),
+			),
+		)
+	}
+	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
+		if e.Attr("href") != "" {
+			url := cleanURL(e.Attr("href"))
+			if what == "dir" {
+				if !presentDirs(url, dirs) && url != target {
+
+					e.Request.Visit(url)
+				}
+			} else {
+				if !presentSubs(url, subs) && url != target {
+
+					e.Request.Visit(url)
+				}
+			}
+		}
+	})
+	c.OnRequest(func(r *colly.Request) {
+		var status = httpGet(r.URL.String())
+		if ignoreBool {
+			statusArray := strings.Split(status, " ")
+			statusInt, err := strconv.Atoi(statusArray[0])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not get response status %s\n", status)
+				os.Exit(1)
+			}
+			if !ignoreResponse(statusInt, ignore) {
+				if what == "dir" {
+					addDirs(r.URL.String(), status, dirs, mutex)
+					printDirs(dirs, ignore, outputFile, mutex, plain)
+				} else {
+					addSubs(r.URL.String(), status, subs, mutex)
+					printSubs(subs, ignore, outputFile, mutex, plain)
+				}
+			}
+		} else {
+			if what == "dir" {
+				addDirs(r.URL.String(), status, dirs, mutex)
+				printDirs(dirs, ignore, outputFile, mutex, plain)
+			} else {
+				addSubs(r.URL.String(), status, subs, mutex)
+				printSubs(subs, ignore, outputFile, mutex, plain)
+			}
+		}
+	})
+	c.Visit("http://" + target)
+}
+
+func httpGet(input string) string {
+	resp, err := http.Get(input)
+	if err != nil {
+		return "ERROR"
+	}
+	defer resp.Body.Close()
+	return resp.Status
+}
+
+func addSubs(target string, value string, subs map[string]Asset, mutex *sync.Mutex) {
+	sub := Asset{
+		Value:   value,
+		Printed: false,
+	}
+	cleanProtocol(target)
+	mutex.Lock()
+	if !presentSubs(target, subs) {
+		subs[target] = sub
+	}
+	mutex.Unlock()
+}
+
+func addDirs(target string, value string, dirs map[string]Asset, mutex *sync.Mutex) {
+	dir := Asset{
+		Value:   value,
+		Printed: false,
+	}
+	mutex.Lock()
+	if !presentDirs(target, dirs) {
+		dirs[target] = dir
+	}
+	mutex.Unlock()
+}
+
+func presentSubs(input string, subs map[string]Asset) bool {
+	_, ok := subs[input]
+	return ok
+}
+
+func presentDirs(input string, dirs map[string]Asset) bool {
+	_, ok := dirs[input]
+	return ok
 }
