@@ -132,3 +132,8 @@ func main() {
 		8002, 8003, 8004, 8005, 8080, 8200, 8888, 9050, 10000}
 	execute(input, subs, dirs, common)
 }
+
+type Asset struct {
+	Value   string
+	Printed bool
+}
