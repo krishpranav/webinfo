@@ -543,11 +543,18 @@ func readArgs() Input {
 
 	portPlainPtr := portCommand.Bool("plain", false, "Print only results")
 
-	//default port values
 	StartPort := 1
 	EndPort := 65535
 	portsArray := []int{}
 	portArrayBool := false
+
+	if len(os.Args) < 2 {
+		intro()
+		fmt.Println("[ERROR] subcommand is required.")
+		fmt.Println("	Type: scilla help      - Full overview of the commands.")
+		fmt.Println("	Type: scilla examples  - Some explanatory examples.")
+		os.Exit(1)
+	}
 
 	switch os.Args[1] {
 	case "report":
@@ -572,4 +579,195 @@ func readArgs() Input {
 		os.Exit(1)
 	}
 
+	if reportCommand.Parsed() {
+
+		if *reportTargetPtr == "" {
+			reportCommand.PrintDefaults()
+			os.Exit(1)
+		}
+
+		if !isURL(*reportTargetPtr) {
+			fmt.Println("The inputted target is not valid.")
+			os.Exit(1)
+		}
+		if !outputFormatIsOk(*reportOutputPtr) {
+			fmt.Println("The output format is not valid.")
+			os.Exit(1)
+		}
+
+		if *reportPortsPtr != "" && *reportCommonPtr {
+			fmt.Println("You can't specify a port range and common option together.")
+			os.Exit(1)
+		}
+
+		if *reportPortsPtr != "" {
+			if strings.Contains(*reportPortsPtr, "-") && strings.Contains(*reportPortsPtr, ",") {
+				fmt.Println("You can specify a ports range or an array, not both.")
+				os.Exit(1)
+			}
+			if strings.Contains(*reportPortsPtr, "-") {
+				portsRange := string(*reportPortsPtr)
+				StartPort, EndPort = checkPortsRange(portsRange, StartPort, EndPort)
+				portArrayBool = false
+			} else if strings.Contains(*reportPortsPtr, ",") {
+				portsArray = checkPortsArray(*reportPortsPtr)
+				portArrayBool = true
+			} else {
+				portsRange := string(*reportPortsPtr)
+				StartPort, EndPort = checkPortsRange(portsRange, StartPort, EndPort)
+				portArrayBool = false
+			}
+		}
+		if *reportIgnoreDirPtr != "" {
+			toBeIgnored := string(*reportIgnoreDirPtr)
+			reportIgnoreDir = checkIgnore(toBeIgnored)
+		}
+		if *reportIgnoreSubPtr != "" {
+			toBeIgnored := string(*reportIgnoreSubPtr)
+			reportIgnoreSub = checkIgnore(toBeIgnored)
+		}
+	}
+
+	if dnsCommand.Parsed() {
+
+		if *dnsTargetPtr == "" {
+			dnsCommand.PrintDefaults()
+			os.Exit(1)
+		}
+		if !isURL(*dnsTargetPtr) {
+			fmt.Println("The inputted target is not valid.")
+			os.Exit(1)
+		}
+		if !outputFormatIsOk(*dnsOutputPtr) {
+			fmt.Println("The output format is not valid.")
+			os.Exit(1)
+		}
+	}
+
+	if subdomainCommand.Parsed() {
+
+		if *subdomainTargetPtr == "" {
+			subdomainCommand.PrintDefaults()
+			os.Exit(1)
+		}
+		if !isURL(*subdomainTargetPtr) {
+			fmt.Println("The inputted target is not valid.")
+			os.Exit(1)
+		}
+		if !outputFormatIsOk(*subdomainOutputPtr) {
+			fmt.Println("The output format is not valid.")
+			os.Exit(1)
+		}
+		if *subdomainIgnorePtr != "" {
+			toBeIgnored := string(*subdomainIgnorePtr)
+			subdomainIgnore = checkIgnore(toBeIgnored)
+		}
+	}
+
+	if portCommand.Parsed() {
+		if *portTargetPtr == "" {
+			portCommand.PrintDefaults()
+			os.Exit(1)
+		}
+
+		if *portsPtr != "" && *portCommonPtr {
+			fmt.Println("You can't specify a port range and common option together.")
+			os.Exit(1)
+		}
+		if *portsPtr != "" {
+			if strings.Contains(*portsPtr, "-") && strings.Contains(*portsPtr, ",") {
+				fmt.Println("You can specify a ports range or an array, not both.")
+				os.Exit(1)
+			}
+			if strings.Contains(*portsPtr, "-") {
+				portsRange := string(*portsPtr)
+				StartPort, EndPort = checkPortsRange(portsRange, StartPort, EndPort)
+				portArrayBool = false
+			} else if strings.Contains(*portsPtr, ",") {
+				portsArray = checkPortsArray(*portsPtr)
+				portArrayBool = true
+			} else {
+				portsRange := string(*portsPtr)
+				StartPort, EndPort = checkPortsRange(portsRange, StartPort, EndPort)
+				portArrayBool = false
+			}
+		}
+
+		if !isURL(*portTargetPtr) {
+			fmt.Println("The inputted target is not valid.")
+			os.Exit(1)
+		}
+		if !outputFormatIsOk(*portOutputPtr) {
+			fmt.Println("The output format is not valid.")
+			os.Exit(1)
+		}
+	}
+
+	if dirCommand.Parsed() {
+
+		if *dirTargetPtr == "" {
+			dirCommand.PrintDefaults()
+			os.Exit(1)
+		}
+		if !isURL(*dirTargetPtr) {
+			fmt.Println("The inputted target is not valid.")
+			os.Exit(1)
+		}
+		if !outputFormatIsOk(*dirOutputPtr) {
+			fmt.Println("The output format is not valid.")
+			os.Exit(1)
+		}
+		if *dirIgnorePtr != "" {
+			toBeIgnored := string(*dirIgnorePtr)
+			dirIgnore = checkIgnore(toBeIgnored)
+		}
+	}
+
+	if helpCommand.Parsed() {
+		help()
+		os.Exit(0)
+	}
+
+	if examplesCommand.Parsed() {
+		examples()
+		os.Exit(0)
+	}
+
+	result := Input{
+		*reportTargetPtr,
+		*reportWordlistDirPtr,
+		*reportWordlistSubdomainPtr,
+		*reportOutputPtr,
+		reportIgnoreDir,
+		reportIgnoreSub,
+		*reportCrawlerDirPtr,
+		*reportCrawlerSubdomainPtr,
+		*reportSubdomainDBPtr,
+		*reportCommonPtr,
+		*dnsTargetPtr,
+		*dnsOutputPtr,
+		*dnsPlainPtr,
+		*subdomainTargetPtr,
+		*subdomainWordlistPtr,
+		*subdomainOutputPtr,
+		subdomainIgnore,
+		*subdomainCrawlerPtr,
+		*subdomainDBPtr,
+		*subdomainPlainPtr,
+		*dirTargetPtr,
+		*dirWordlistPtr,
+		*dirOutputPtr,
+		dirIgnore,
+		*dirCrawlerPtr,
+		*dirPlainPtr,
+		*portTargetPtr,
+		*portOutputPtr,
+		StartPort,
+		EndPort,
+		portArrayBool,
+		portsArray,
+		*portCommonPtr,
+		*portPlainPtr,
+	}
+	return result
 }
