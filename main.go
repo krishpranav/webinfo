@@ -959,3 +959,15 @@ func sonarSubdomains(target string, plain bool) []string {
 	}
 	return arr
 }
+
+func appendDBSubdomains(dbsubs []string, urls []string) []string {
+	if len(dbsubs) == 0 {
+		return urls
+	}
+	var result = []string{}
+	dbsubs = removeDuplicateValues(dbsubs)
+	result = append(dbsubs, urls...)
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(result), func(i, j int) { result[i], result[j] = result[j], result[i] })
+	return result
+}
